@@ -1,0 +1,31 @@
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# Python local state
+__pycache__/
+*.py[cod]
+*.db
+.venv/
+venv/
+
+# Node/Vite generated files
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Logs, caches, and local tooling
+*.log
+.pytest_cache/
+.coverage
+.coverage.*
+.mypy_cache/
+.ruff_cache/
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
