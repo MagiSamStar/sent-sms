@@ -4,13 +4,14 @@ import secrets
 import hashlib
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy import DateTime, Integer, String, create_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
 from phonenumbers import PhoneNumberFormat
 from dotenv import load_dotenv
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.requests import Request
 from sent_dm import Sent
 from pydantic import Field
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -89,14 +90,14 @@ class VerifyCodeRequest(BaseModel):
 @app.post("/verify-code")
 @limiter.limit("10/minute")
 def verify_code(
-    request_context: Request,
-    request: VerifyCodeRequest,
+    request: Request,
+    payload: VerifyCodeRequest,
     db: Session = Depends(get_db),
 ):
     """Verify a six-digit code for a phone number."""
 
     try:
-        phone_number = validate_phone_number(request.phone_number)
+        phone_number = validate_phone_number(payload.phone_number)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -130,7 +131,7 @@ def verify_code(
 
     if not secrets.compare_digest(
         verification.code_hash,
-        hash_verification_code(request.code),
+        hash_verification_code(payload.code),
     ):
         verification.attempts += 1
         db.commit()
@@ -222,14 +223,14 @@ def validate_phone(request: PhoneValidationRequest):
 @app.post("/request-code")
 @limiter.limit("5/minute")
 def request_code(
-    request_context: Request,
-    request: OTPRequest,
+    request: Request,
+    payload: OTPRequest,
     db: Session = Depends(get_db),
 ):
     """Prepare a verification code without sending an SMS yet."""
 
     # Require explicit consent before preparing an SMS verification.
-    if not request.consent:
+    if not payload.consent:
         raise HTTPException(
             status_code=400,
             detail="Consent is required to request a verification SMS.",
@@ -237,7 +238,7 @@ def request_code(
 
     # Validate and normalize the phone number.
     try:
-        phone_number = validate_phone_number(request.phone_number)
+        phone_number = validate_phone_number(payload.phone_number)
     except ValueError as exc:
         raise HTTPException(
             status_code=400,
